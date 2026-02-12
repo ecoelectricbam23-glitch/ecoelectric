@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Eco Electric</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+<style>
+body{font-family:Arial;margin:0;background:#eefaf1}
+header{background:linear-gradient(45deg,#ff0000,#00ffff);color:#fff;text-align:center;padding:20px}
+h1{margin:0}
+section{padding:20px}
+.card{background:#fff;padding:15px;margin:15px 0;border-radius:15px;box-shadow:0 4px 15px rgba(0,0,0,0.1)}
+img{width:100%;border-radius:10px}
+button{background:#0c7c3c;color:#fff;border:none;padding:10px 15px;border-radius:8px;cursor:pointer;margin:5px 0}
+button:hover{background:#008080}
+input{width:100%;padding:10px;margin:6px 0;border-radius:8px;border:1px solid #ccc}
+#adminPanel{display:none;background:#222;color:#fff;padding:15px;border-radius:15px;margin-top:10px}
+.price{color:#008000;font-weight:bold;font-size:18px}
+.cartBox{background:#fff3cd;padding:15px;border-radius:15px;margin-top:15px}
+.call{position:fixed;bottom:20px;right:20px;background:green;color:#fff;
+padding:15px;border-radius:50%;font-size:20px;animation:pulse 1.5s infinite;text-decoration:none}
+@keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.1)}100%{transform:scale(1)}}
+.deleteBtn{background:red}
+.deleteBtn:hover{background:darkred}
+</style>
+</head>
+
+<body>
+
+<header>
+<h1>⚡ Eco Electric</h1>
+<p>Electric Vehicle Service Provider</p>
+<p><b>Owner:</b> Pradeep Gupta</p>
+</header>
+
+<section>
+<h2>Customer Details</h2>
+<input id="cname" placeholder="Your Name">
+<input id="cphone" placeholder="Phone Number">
+</section>
+
+<section>
+<h2>Our Services</h2>
+<div id="services"></div>
+</section>
+
+<section>
+<h2>🛒 Cart</h2>
+<div class="cartBox">
+<div id="cartItems"></div>
+<h3>Total: ₹<span id="total">0</span></h3>
+<button onclick="checkout()">Checkout via WhatsApp</button>
+</div>
+</section>
+
+<section>
+<h2>Admin Login</h2>
+<input id="adminPass" placeholder="Password">
+<button onclick="adminLogin()">Login</button>
+
+<div id="adminPanel">
+<h3>Add New Service</h3>
+<input id="sname" placeholder="Service Name">
+<input id="sprice" placeholder="Price">
+<input id="simg" placeholder="Image URL">
+<button onclick="addService()">Add Service</button>
+</div>
+</section>
+
+<section>
+<h2>Contact</h2>
+<p>
+📍 Somnaath Nagar, Aska Road,<br>
+Eco Electric, Berhampur, Odisha<br><br>
+📞 9437885388 | 7008375736
+</p>
+
+<iframe width="100%" height="250" style="border:0"
+src="https://www.google.com/maps?q=Eco%20Electric%20Somnaath%20Nagar%20Aska%20Road%20Berhampur%20Odisha&output=embed">
+</iframe>
+</section>
+
+<a href="tel:7008375736" class="call">📞</a>
+
+<script>
+// 🔥 PUT YOUR FIREBASE CONFIG HERE
+firebase.initializeApp({
+    apiKey: "YOUR_PROJECT",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    databaseURL: "https://YOUR_PROJECT.firebaseio.com",
+    projectId: "YOUR_PROJECT"
+});
+
+let db = firebase.database();
+let serviceBox = document.getElementById("services");
+let cart = [];
+let total = 0;
+
+// ADMIN LOGIN
+function adminLogin(){
+    if(adminPass.value==="6769"){
+        document.getElementById("adminPanel").style.display="block";
+    } else {
+        alert("Wrong Password Try Again");
+    }
+}
+
+// ADD SERVICE
+function addService(){
+    if(!sname.value || !sprice.value || !simg.value){
+        alert("Fill all fields"); return;
+    }
+
+    db.ref("services").push({
+        name: sname.value,
+        price: sprice.value,
+        img: simg.value
+    });
+
+    sname.value=""; sprice.value=""; simg.value="";
+}
+
+// DELETE SERVICE
+function deleteService(id){
+    db.ref("services/"+id).remove();
+}
+
+// SHOW SERVICES
+db.ref("services").on("value", snap=>{
+    let html="";
+    snap.forEach(s=>{
+        let d=s.val();
+        let id=s.key;
+        html+=`
+            <div class="card">
+                <img src="${d.img}">
+                <h3>${d.name}</h3>
+                <div class="price">₹ ${d.price}</div>
+                <button onclick="addToCart('${d.name}',${d.price})">Add to Cart</button>
+                <button class="deleteBtn" onclick="deleteService('${id}')">Delete</button>
+            </div>`;
+    });
+    serviceBox.innerHTML=html;
+});
+
+// CART
+function addToCart(name,price){
+    cart.push({name,price});
+    total += parseInt(price);
+    updateCart();
+}
+
+function updateCart(){
+    let html="";
+    cart.forEach(item=>{
+        html+=`<p>${item.name} - ₹${item.price}</p>`;
+    });
+    document.getElementById("cartItems").innerHTML=html;
+    document.getElementById("total").innerText=total;
+}
+
+// CHECKOUT
+function checkout(){
+    if(!cname.value || !cphone.value){
+        alert("Enter name & phone"); return;
+    }
+    if(cart.length==0){
+        alert("Cart is empty"); return;
+    }
+
+    let msg = `Eco Electric Order
+Name: ${cname.value}
+Phone: ${cphone.value}
+`;
+
+    cart.forEach(item=>{
+        msg += `${item.name} - ₹${item.price}
+`;
+    });
+
+    msg += `Total: ₹${total}`;
+
+    window.open("https://wa.me/917008375736?text="+encodeURIComponent(msg));
+}
+</script>
+
+</body>
+</html>
